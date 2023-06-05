@@ -1,0 +1,36 @@
+Dado um frame PDL: F = (W, Ra)
+    W = Conjunto de estados
+    Ra = relação binária indexada
+
+# Ideia:
+W = [
+    e1,
+    e2,
+    e3,
+    ...
+]
+
+Ra = [
+    (1,2,a),
+    (2,1,b),
+    (2,3,a),
+    (4,3,a),
+    (3,5,b),
+    (4,3,a),
+    (1,2,a),
+    (1,2,a),
+    (1,2,a),
+]
+
+Verificar se F é um frame válido para um programa pProg
+
+# Ideia
+"rodar" o programa pProg e incluir num set todas as mudanças de estado que ele gera
+comparar se o set gerado é igual ao set Ra pro conjunto de estados W
+
+Pontos importantes:
+    Como é uma representação valida de W, Ra e F?
+    O que pode ser uma formula pProg?
+    Formulas podem aparecer?
+    Que tipos de operações podem aparecer para pProg?
+    pProg pode ser um programa de verdade? Como um programa que deleta numeros pares de uma lista por exemplo?
