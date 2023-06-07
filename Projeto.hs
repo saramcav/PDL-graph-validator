@@ -5,12 +5,7 @@ type Graph = [NamedEdge]
 
 data PDLProgram = AtomicProgram String | OperatorProgram String [PDLProgram] deriving Show
 
-"U a ; b c"
-["U", "a", ...]
-(1, 2, a)
-
-(1, 3, b)
-(3, 4, c)
+-- Syntactic Evaluation
 
 parsePDLProgram :: [String] -> (PDLProgram, [String])
 parsePDLProgram ("U" : rest) =
@@ -34,26 +29,65 @@ parsePDL tokens =
       then program
       else error "Invalid program: Extra tokens remaining"
 
-evaluateProgram :: PDLProgram -> Graph -> Bool
-evaluateProgram (AtomicProgram program) graph =
-  any (\(_, _, atomicProgram) -> atomicProgram == program) graph
-evaluateProgram (OperatorProgram op children) graph =
+
+-- Semantic Evaluation
+
+getInitialState :: Graph -> String
+getInitialState [] = ""
+getInitialState ((state, _, _):_) = state
+
+startEvaluation :: PDLProgram -> Graph -> Bool
+startEvaluation prog graph = 
+  let state = getInitialState graph
+  in evaluateProgram prog graph state
+
+evaluateProgram :: PDLProgram -> Graph -> State -> (Bool, State)
+
+evaluateProgram (AtomicProgram program) graph state =
+  -- Busca pela aresta
+  let matchingEdge = findMatchingEdge graph
+  -- Repete estado anterior se não encontrar e considera falso
+  -- Avança para o próximo estado caso encontre e considera verdadeiro
+  in case matchingEdge of
+    Nothing -> (False, state)
+    Just (_, nextState, _) -> (True, nextState)
+  where
+    -- Dado o grafo (e acessando o programa / estado do escopo anterior) determina se a aresta atual é válida
+    -- Se não, tenta com o resto das arestas até acabar o grafo e retornar nothing
+    findMatchingEdge :: Graph -> Maybe NamedEdge
+    findMatchingEdge [] = Nothing
+    findMatchingEdge ((fromState, nextState, atomicProgram):rest)
+      | atomicProgram == program && fromState == state = Just (fromState, nextState, atomicProgram)
+      | otherwise = findMatchingEdge rest
+
+evaluateProgram (OperatorProgram op children) graph state =
   case op of
-    "U" -> any (\child -> evaluateProgram child graph) children
-    ";" -> evaluateSequence children graph
+    ";" -> evaluateSequence children graph state
+    "U" -> any (\child -> evaluateProgram child graph state) children
     "*" -> evaluateIteration (head children) graph
     _ -> error "Invalid operator"
 
-evaluateSequence :: [PDLProgram] -> Graph -> Bool
-evaluateSequence [] _ = True
-evaluateSequence [prog] graph = evaluateProgram prog graph
-evaluateSequence (prog1 : prog2 : rest) graph =
-  evaluateProgram prog1 graph && evaluateSequence (prog2 : rest) graph
+evaluateSequence :: [PDLProgram] -> Graph -> State -> (Bool, State)
+evaluateSequence [] _ _ = True
+evaluateSequence (prog1 : prog2 : rest) graph state =
+  let (b1, state1) = evaluateProgram prog1 graph state
+      -- Checa prog2 somente se prog1 é verdadeiro, senão pode retornar falso desde já apontando o estado falho
+      (b2, state2) = if b1 then evaluateProgram prog2 graph state1 else (False, state) 
+  in (b2, state2)
 
-evaluateIteration :: PDLProgram -> Graph -> Bool
+evaluateOption :: [PDLProgram] -> Graph -> State -> (Bool, State)
+evaluateOption (prog1 : prog2 : rest) graph state
+  let (b1, state1) = evaluateProgram prog1 graph state
+      (b2, state2) = evaluateProgram prog2 graph state
+      nState = if b1 then state1 else if b2 then state2 else state
+      b = b1 || b2
+  in (b, nState)
+
+-- TODO: Iterações considerando estado, não mudei naa nela ainda
+evaluateIteration :: PDLProgram -> Graph -> State -> (Bool, State)
 evaluateIteration prog graph = evaluateIteration' prog graph []
 
-evaluateIteration' :: PDLProgram -> Graph -> [State] -> Bool
+evaluateIteration' :: PDLProgram -> Graph -> [State] -> (Bool, State)
 evaluateIteration' prog graph visited =
   any (\(_, nextState, _) -> evaluateIteration' prog graph (nextState : visited)) validEdges
   where
@@ -65,6 +99,6 @@ main = do
   let pdlProgram = words "; a b"
   let programAST = parsePDL pdlProgram
   let graph = [("s1", "s2", "a"), ("s1", "s2", "b")]
-  let isValid = evaluateProgram programAST graph
+  let (isValid, _) = evaluateProgram programAST graph
   print programAST
   putStrLn $ "Is graph valid for the program? " ++ show isValid
