@@ -1,0 +1,50 @@
+Base do algoritmo da versão 2
+
+Possíveis casos:
+
+(1) A=a é um programa atômico
+
+H={h = (si, sj)| h é uma relação de aresta a} 
+
+em que vv = V se |H| 0 e vv = F, caso contrário 
+retornar (vv, H)
+
+------------------------------------------------
+
+(2) U A B
+
+Seja r o retorno de um programa 
+
+Seja H o conjunto de relações tais que o programa  é aresta
+
+Obter Ar 
+Se Ar.vv é V, então retornar (V, HA) 
+Senão Se Br.vv é V, então retornar (V, HB) 
+Senão, retornar (F,{}) 
+
+------------------------------------------------
+
+(3) ; A B
+
+Obter Ar e Br
+
+Hout  ={(a1, a3) | (a1, a2) Ha  e (a2, a3) Hb }
+
+em que vv = V 
+ se Ar.vv = V, Br.vv = V e |H| 0
+vv = F, caso contrário
+retornar (vv, Hout)
+
+------------------------------------------------
+
+(4) * A
+
+obter Ar
+
+Hout = {(a1, ak) |  (a1, a2), (a2, a3), ... , (ak-1, ak)  Ha}
+
+em que vv = V se 
+ Ar.vv = V,
+e vv = F, caso contrário
+
+retornar (vv, Hout)
