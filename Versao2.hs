@@ -32,6 +32,15 @@ parsePDL tokens =
       then program
       else error "Invalid program: Extra tokens remaining"
 
+readGraph :: [NamedEdge] -> IO [NamedEdge]
+readGraph lines = do
+    line <- getLine
+    if line == "0"
+        then return lines
+        else do 
+            let [fromState, toState, labelEdge] = words line
+            readGraph((fromState, toState, labelEdge) : lines)
+
 --Pegando todas as arestas quem contêm o atômico de entrada
 getEdges :: Graph -> AtomicProgram -> [Edge]
 getEdges graph labelEdge = 
@@ -82,17 +91,31 @@ evaluateSequence prog1 prog2 graph =
 --     then 
 
 main = do
-  let pdlProgram = words "; ; a b c"
-  let programAST = parsePDL pdlProgram
-  let graph = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "c")]
-  let a = evaluateProgram programAST graph
-  let convAtomicoA = parsePDL (words "a")
-  let convAtomicoB = parsePDL (words "b")
-  let (resultA, edgesA) = evaluateProgram convAtomicoA graph 
-  let (resultB, edgesB) = evaluateProgram convAtomicoB graph
-  let resultado = getTransitiveEdges edgesA edgesB
-  print a
+    -- let pdlProgram = words "; ; a b c"
+  -- let programAST = parsePDL pdlProgram
+  -- let graph = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "c")]
+  -- let a = evaluateProgram programAST graph
+  -- let convAtomicoA = parsePDL (words "a")
+  -- let convAtomicoB = parsePDL (words "b")
+  -- let (resultA, edgesA) = evaluateProgram convAtomicoA graph 
+  -- let (resultB, edgesB) = evaluateProgram convAtomicoB graph
+  -- let resultado = getTransitiveEdges edgesA edgesB
+  -- print a
 --   let isValid = evaluateProgram programAST graph
 --   print programAST
 --   putStrLn $ "Is graph valid for the program? " ++ show isValid
-  
+
+
+  --lendo programa e grafo
+  putStrLn "\nDigite seu programa: "
+  inputProgram <- getLine
+  let pdlProgram = words inputProgram
+  let programAST = parsePDL pdlProgram
+
+  putStrLn "\nDigite cada aresta do grafo com seus elementos separados por espaço e aperte enter."
+  putStrLn "Exemplo: a entrada 's1 s2 a' representa a aresta '(s1, s2, a)'."
+  putStrLn "Para encerrar a inserção de arestas, digite 0."
+
+  graph <- readGraph []
+  print graph
+  print (evaluateProgram programAST graph)
