@@ -114,23 +114,42 @@ evaluateIteration prog graph =
   in (True, getMaxTransitives edges [])
 
 main = do
-  let pdlProgram = words "; U ; a b c * d"
-  let programAST = parsePDL pdlProgram
+  let pdlProgram1 = words "; U ; a b c * d"
+  let programAST1 = parsePDL pdlProgram1
   
-  let graph1 = [("s1", "s2", "c")]
-  let graph2 = [("s1", "s2", "a"), ("s2", "s3", "b")]
-  let graph3 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "d"), ("s4", "s5", "k")]
-  let graph4 = [("s1", "s2", "c"), ("s2", "s3", "d"), ("s3", "s4", "p")]
-  let graph5 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "k"), ("s4", "s5", "d")]
-  let graph6 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "k")]
+  let graph1_prog1 = [("s1", "s2", "c")]
+  let graph2_prog1 = [("s1", "s2", "a"), ("s2", "s3", "b")]
+  let graph3_prog1 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "d"), ("s4", "s5", "k")]
+  let graph4_prog1 = [("s1", "s2", "c"), ("s2", "s3", "d"), ("s3", "s4", "p")]
+  let graph5_prog1 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "k"), ("s4", "s5", "d")]
+  let graph6_prog1 = [("s1", "s2", "a"), ("s2", "s3", "b"), ("s3", "s4", "k")]
 
-  putStrLn ("O resultado do caso 1 é: " ++ show (evaluateProgram programAST graph1))
-  putStrLn ("O resultado do caso 2 é: " ++ show (evaluateProgram programAST graph2))
-  putStrLn ("O resultado do caso 3 é: " ++ show (evaluateProgram programAST graph3))
-  putStrLn ("O resultado do caso 4 é: " ++ show (evaluateProgram programAST graph4))
-  putStrLn ("O resultado do caso 5 é: " ++ show (evaluateProgram programAST graph5))
-  putStrLn ("O resultado do caso 6 é: " ++ show (evaluateProgram programAST graph6))
+  putStrLn "Resultado do Programa 1:"
+  putStrLn ("O resultado do caso 1 é: " ++ show (evaluateProgram programAST1 graph1_prog1))
+  putStrLn ("O resultado do caso 2 é: " ++ show (evaluateProgram programAST1 graph2_prog1))
+  putStrLn ("O resultado do caso 3 é: " ++ show (evaluateProgram programAST1 graph3_prog1))
+  putStrLn ("O resultado do caso 4 é: " ++ show (evaluateProgram programAST1 graph4_prog1))
+  putStrLn ("O resultado do caso 5 é: " ++ show (evaluateProgram programAST1 graph5_prog1))
+  putStrLn ("O resultado do caso 6 é: " ++ show (evaluateProgram programAST1 graph6_prog1))
+  putStrLn "\n"
 
+  ---------------------------------------------------------------------------------------------
+
+  let pdlProgram2 = words "; * ; * U a b c d"
+  let programAST2 = parsePDL pdlProgram2
+
+  let graph1_prog2 = [("s1", "s2", "c"), ("s2", "s3", "d")]
+  let graph2_prog2 = [("s1", "s2", "d")]
+  let graph3_prog2 = [("s1", "s2", "a"), ("s2", "s3", "c"), ("s3", "s4", "d")]
+  let graph4_prog2 = [("s1", "s2", "c"), ("s2", "s3", "k"), ("s3", "s4", "d")]
+  let graph5_prog2 = [("s1", "s2", "d"), ("s2", "s3", "z")]
+
+  putStrLn "Resultado do Programa 2:"
+  putStrLn ("O resultado do caso 1 é: " ++ show (evaluateProgram programAST2 graph1_prog2))
+  putStrLn ("O resultado do caso 2 é: " ++ show (evaluateProgram programAST2 graph2_prog2))
+  putStrLn ("O resultado do caso 3 é: " ++ show (evaluateProgram programAST2 graph3_prog2))
+  putStrLn ("O resultado do caso 4 é: " ++ show (evaluateProgram programAST2 graph4_prog2))
+  putStrLn ("O resultado do caso 5 é: " ++ show (evaluateProgram programAST2 graph5_prog2))
   -- lendo programa e grafo
   -- putStrLn "\nDigite seu programa: "
   -- inputProgram <- getLine
