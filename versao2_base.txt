@@ -28,7 +28,7 @@ Senão, retornar (F,{})
 
 Obter Ar e Br
 
-Hout  ={(a1, a3) | (a1, a2) Ha  e (a2, a3) Hb }
+Hout  ={(a1, a3) | EXISTE(a1, a2) PERTENCE Ha  e EXISTE(a2, a3) PERTENCE Hb }
 
 em que vv = V 
  se Ar.vv = V, Br.vv = V e |H| 0
@@ -41,10 +41,37 @@ retornar (vv, Hout)
 
 obter Ar
 
-Hout = {(a1, ak) |  (a1, a2), (a2, a3), ... , (ak-1, ak)  Ha}
+Hout = transitivas máximas(HA, {})
 
-em que vv = V se 
- Ar.vv = V,
-e vv = F, caso contrário
+retornar (V, Hout)
 
-retornar (vv, Hout)
+
+procedimento transitivas máximas(A, Out):
+	se |A| = 0:
+		retorna Out;
+	senão:
+		(a, b), A_out = transitiva máxima(A_algum, A)
+		
+		retorna transitivas máximas(A_out, Out U {(a, b)})
+		
+
+procedimento transitiva máxima((a1, a2), A):
+    se !EXISTE((a0, a1) ou (a2, a3)):
+        retorna ((a1, a2), A);	
+    se EXISTE(a0, a1):
+        retorna transitiva máxima((a0, a2), A - {(a0, a1)})
+    se EXISTE (a2, a3):
+        retorna transitiva máxima((a1, a3), A - {(a2, a3)})
+	
+
+------------------------------------------------
+
+Exemplo de execução do procedimento transitivas máximas:
+
+A = {(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (7, 8), (8, 9), (9, 10), (10, 11)}
+
+(4, 5) -> (3, 6) -> (2, 6) -> (1, 6)
+
+(8, 9) -> (7, 10) -> (7, 11)
+
+B = {(1, 6), (7, 11)}
