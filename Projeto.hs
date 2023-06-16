@@ -36,7 +36,7 @@ getInitialState :: Graph -> String
 getInitialState [] = ""
 getInitialState ((state, _, _):_) = state
 
-startEvaluation :: PDLProgram -> Graph -> Bool
+startEvaluation :: PDLProgram -> Graph -> (Bool, State)
 startEvaluation prog graph = 
   let state = getInitialState graph
   in evaluateProgram prog graph state
@@ -63,12 +63,12 @@ evaluateProgram (AtomicProgram program) graph state =
 evaluateProgram (OperatorProgram op children) graph state =
   case op of
     ";" -> evaluateSequence children graph state
-    "U" -> any (\child -> evaluateProgram child graph state) children
-    "*" -> evaluateIteration (head children) graph
+    "U" -> evaluateOption children graph state
+    "*" -> evaluateIteration (head children) graph state
     _ -> error "Invalid operator"
 
 evaluateSequence :: [PDLProgram] -> Graph -> State -> (Bool, State)
-evaluateSequence [] _ _ = True
+evaluateSequence [] _ _ = (True, "")
 evaluateSequence (prog1 : prog2 : rest) graph state =
   let (b1, state1) = evaluateProgram prog1 graph state
       -- Checa prog2 somente se prog1 é verdadeiro, senão pode retornar falso desde já apontando o estado falho
@@ -76,29 +76,42 @@ evaluateSequence (prog1 : prog2 : rest) graph state =
   in (b2, state2)
 
 evaluateOption :: [PDLProgram] -> Graph -> State -> (Bool, State)
-evaluateOption (prog1 : prog2 : rest) graph state
+evaluateOption (prog1 : prog2 : rest) graph state =
   let (b1, state1) = evaluateProgram prog1 graph state
       (b2, state2) = evaluateProgram prog2 graph state
       nState = if b1 then state1 else if b2 then state2 else state
       b = b1 || b2
   in (b, nState)
 
--- TODO: Iterações considerando estado, não mudei naa nela ainda
+--TODO: Test this function
 evaluateIteration :: PDLProgram -> Graph -> State -> (Bool, State)
-evaluateIteration prog graph = evaluateIteration' prog graph []
+evaluateIteration prog graph state =
+  let (isValid, finalState) = checkIteration prog graph state
+  in (isValid, finalState)
 
-evaluateIteration' :: PDLProgram -> Graph -> [State] -> (Bool, State)
-evaluateIteration' prog graph visited =
-  any (\(_, nextState, _) -> evaluateIteration' prog graph (nextState : visited)) validEdges
-  where
-    validEdges = filter (\(currentState, nextState, atomicProgram) ->
-                           evaluateProgram prog [(currentState, nextState, atomicProgram)]) graph
+
+checkIteration :: PDLProgram -> Graph -> State -> (Bool, State)
+checkIteration prog graph state =
+  let (isValid, newState) = evaluateProgram prog graph state
+  in if isValid
+       then (True, newState)
+       else case evaluateProgram (OperatorProgram "*" [prog]) graph state of
+              (True, finalState) -> (True, finalState)
+              _ -> (False, state)
+
+
+
+
 
 main :: IO ()
 main = do
-  let pdlProgram = words "; a b"
-  let programAST = parsePDL pdlProgram
-  let graph = [("s1", "s2", "a"), ("s1", "s2", "b")]
-  let (isValid, _) = evaluateProgram programAST graph
-  print programAST
-  putStrLn $ "Is graph valid for the program? " ++ show isValid
+  let pdlProgram = "; ; b * c d"
+      programAST = parsePDL (words pdlProgram)
+      graph = [("s3", "s4", "b"), ("s4", "s5", "c"), ("s5", "s6", "c"), ("s6", "s7", "d")]
+      (isValid, endState) = startEvaluation programAST graph
+  putStrLn $ "\nAvaliating program: " ++ show pdlProgram
+  putStrLn $ "\nGraph:"
+  mapM_ print graph
+
+  putStrLn $ "\nIs graph valid for the program? " ++ show isValid
+  putStrLn $ "End State: " ++ show endState
