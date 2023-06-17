@@ -55,11 +55,11 @@ joinTransitiveEdges edges1 edges2 = [(fromState1, toState2) | (fromState1, toSta
                                                               (fromState2, toState2) <- edges2, 
                                                                toState1 == fromState2]
 
-unionEdges :: [Edge] -> [Edge] -> [Edge]
-unionEdges edges1 edges2 = edges1 ++ filter (`notElem` edges1) edges2
+removeDuplicateEdges :: [Edge] -> [Edge]
+removeDuplicateEdges edges = [edge | i <- [0 .. length edges - 1], let edge = edges !! i, edge `notElem` take i edges]
 
-intersectionEdges :: [Edge] -> [Edge] -> [Edge] 
-intersectionEdges edges1 edges2 = [e | e <- edges1, e `elem` edges2]
+differenceEdges :: [Edge] -> [Edge] -> [Edge]
+differenceEdges edges1 edges2 = [x | x <- edges1, x `notElem` edges2]
 
 removeEdge :: Edge -> [Edge] -> [Edge]
 removeEdge edge edges = [e | e <- edges, e /= edge]
@@ -76,6 +76,17 @@ getTransitiveEdges edge edges = [(fromState2, toState2) | (fromState1, toState1)
                                                           (fromState2, toState2) <- edges, 
                                                           toState1 == fromState2]
 
+getAllReflexiveEdges :: [Edge] -> [Edge]
+getAllReflexiveEdges edges = [(fromState, toState) | (fromState, toState) <- edges, 
+                                                      fromState == toState] 
+
+
+getGraphReflexivePossibilities :: Graph -> [Edge]
+getGraphReflexivePossibilities graph =
+  let reflexives1 = [(fromState, fromState) | (fromState, toState, labelEdge) <- graph]
+      reflexives2 = [(toState, toState) | (fromState, toState, labelEdge) <- graph]
+   in removeDuplicateEdges (reflexives1 ++ reflexives2)
+
 existsTransitive :: [Edge] -> [Edge] -> Bool
 existsTransitive edge edges =
     let transitiveEdges = getTransitiveEdges edge edges 
@@ -86,47 +97,40 @@ getAllHeadEdges edges =
     [(fromState, toState) | (fromState, toState) <- edges, 
                             isHeadEdge [(fromState, toState)] edges]
 
-getMaxTransitives :: [Edge] -> [Edge] -> [Edge]
-getMaxTransitives [] edges2 = edges2 
-getMaxTransitives edges1 edges2 =
-    let headEdgesSet = getAllHeadEdges edges1
-        headAllHeadEdges = head (headEdgesSet)
-        (transitiveHeadMaxEdges, updatedSetEdges) = getHeadMaxTransitives [headAllHeadEdges] edges1
-        in getMaxTransitives updatedSetEdges (unionEdges edges2 transitiveHeadMaxEdges)
+getTransitivePossibilities :: [Edge] -> [Edge] -> [Edge]
+getTransitivePossibilities [] edges2 = edges2
+getTransitivePossibilities edges1 edges2 = 
+    let reflexiveEdges = getAllReflexiveEdges edges1
+    in if reflexiveEdges /= []
+        then getHeadPossibleTransitive (differenceEdges edges1 reflexiveEdges) edges2
+    else
+        let headEdgesSet = getAllHeadEdges edges1
+            headAllHeadEdges = head (headEdgesSet)
+            possibleEdges = getHeadPossibleTransitive [headAllHeadEdges] edges1
+            edges1' = removeEdge headAllHeadEdges edges1
+            edges2' = removeDuplicateEdges edges2 ++ possibleEdges
+        in getTransitivePossibilities edges1' edges2'
 
-getHeadMaxTransitives :: [Edge] -> [Edge] -> ([Edge], [Edge])
-getHeadMaxTransitives edge edges = 
+getHeadPossibleTransitive :: [Edge] -> [Edge] -> [Edge]
+getHeadPossibleTransitive edge edges =
     if not (existsTransitive edge edges)
-        then let updatedSetEdges = removeEdge (head(edge)) edges
-        in (edge, updatedSetEdges)
-    else
-        let transitiveEdges = getTransitiveEdges edge edges
-            (headMaxTransitives, updatedEdges) = headCalls transitiveEdges edges
-            joinedTransitiveEdges = joinTransitiveEdges edge headMaxTransitives
-            edgeElement = head (edge)
-            updatedSetEdges = removeEdge edgeElement updatedEdges
-        in (joinedTransitiveEdges, updatedSetEdges)
-            -- edge sempre terá uma só aresta, 
-            -- passo tail por causa da assinatura de removeEdge
+        then []
+    else 
+        let joinedTransitiveEdges = joinTransitiveEdges edge edges
+            possibleTransitiveEdges = headCalls joinedTransitiveEdges edges
+        in removeDuplicateEdges joinedTransitiveEdges ++ possibleTransitiveEdges
 
-headCalls :: [Edge] -> [Edge] -> ([Edge], [Edge])
-headCalls [] edges2 = ([], [])
-headCalls edges1 edges2 = 
-    let currentEdge = head (edges1)
-        (headMaxTransitives, updatedEdges) = getHeadMaxTransitives [currentEdge] edges2
-        (headMaxTransitives', updatedEdges') = headCalls (removeEdge currentEdge edges1) edges2
-    in if updatedEdges' == []
-        then
-            (unionEdges headMaxTransitives headMaxTransitives', updatedEdges)
-    else
-        (unionEdges headMaxTransitives headMaxTransitives', intersectionEdges updatedEdges updatedEdges')
+headCalls:: [Edge] -> [Edge] -> [Edge]
+headCalls [] edges = []
+headCalls edge edges =
+    let currentEdge = head (edge)
+        possibleEdges = getHeadPossibleTransitive [currentEdge] edges
+        newEdge = removeEdge currentEdge edge
+        possibleEdges' = headCalls newEdge edges 
+    in removeDuplicateEdges possibleEdges ++ possibleEdges'
 
-containsII :: [Edge] -> Bool
-containsII edges = let iiOccurrence = [(fromState, toState) | (fromState, toState) <- edges, 
-                                                               fromState == "i" && toState == "i"]
-                   in iiOccurrence /= []
 
-evaluateProgram :: PDLProgram -> Graph -> (Bool, [Edge], String)
+evaluateProgram :: PDLProgram -> Graph -> (Bool, [Edge], [String])
 evaluateProgram (AtomicProgram prog) graph = evaluateAtomic prog graph
 evaluateProgram (OperatorProgram op [prog1, prog2]) graph = 
   case op of
@@ -137,55 +141,59 @@ evaluateProgram (OperatorProgram op [prog]) graph =
     then evaluateIteration prog graph
         else error "Invalid operator"
 
-evaluateAtomic :: String -> Graph -> (Bool, [Edge], String)
+evaluateAtomic :: String -> Graph -> (Bool, [Edge], [String])
 evaluateAtomic prog graph = 
     let edges = getEdges graph prog
-        sucessMessage = "Sucesso na avaliacao atomica do programa >>> " ++ prog
+        successMessage = "Sucesso na avaliacao atomica do programa >>> " ++ prog
         failMessage = "Falha na avaliacao atomica do programa >>> " ++ prog
     in if edges /= []
-        then (True, edges, sucessMessage)
-        else (False, edges, failMessage)
+        then (True, edges, [""])
+        else (False, edges,[""])
 
-evaluateNonDeterminism :: PDLProgram -> PDLProgram -> Graph -> (Bool, [Edge], String)
+evaluateNonDeterminism :: PDLProgram -> PDLProgram -> Graph -> (Bool, [Edge], [String])
 evaluateNonDeterminism prog1 prog2 graph =
     let (result1, edges1, message1) = evaluateProgram prog1 graph 
         (result2, edges2, message2) = evaluateProgram prog2 graph
-        sucessMessage = "Sucesso na avaliacao nao deterministica do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
+        successMessage = "Sucesso na avaliacao nao deterministica do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
         failMessage = "Falha na avaliacao nao deterministica do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
+        finalMessage = message1 ++ message2 ++ [successMessage]
     in if result1 || result2
-        then(True, edges1 ++ edges2, sucessMessage)
-    else (False, edges1 ++ edges2, failMessage)
+        then(True, edges1 ++ edges2, [""])
+    else (False, edges1 ++ edges2, [""])
     -- aqui nao pode fazer curto circuito pq se o programa (a;(b U c)) fosse testado com o grafo:
     -- (1)---a--->(2)---c--->(3)---b--->(4) retornaria false já que b já retornaria [(3,4)] para a avaliacao sequencial
     -- entao a avaliacao sequencial pegaria [(1, 2)] de a, que não é considerado transitivo à b
 
-evaluateSequence :: PDLProgram -> PDLProgram -> Graph -> (Bool, [Edge], String)
+evaluateSequence :: PDLProgram -> PDLProgram -> Graph -> (Bool, [Edge], [String])
 evaluateSequence prog1 prog2 graph = 
     let (result1, edges1, message1) = evaluateProgram prog1 graph 
         (result2, edges2, message2) = evaluateProgram prog2 graph
-        sucessMessage = "Sucesso na avaliacao sequencial do programa >>> " ++ pdlToString prog2
+        successMessage = "Sucesso na avaliacao sequencial do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
         failMessage = "Falha na avaliacao sequencial do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
-    
-    in if result1 &&  containsII edges1
-      then (result2, edges2, message2)
+        finalMessage = message1 ++ message2 ++ [successMessage]
+        joinedTransitiveEdges = joinTransitiveEdges edges1 edges2
+    in if result1 && result2 && joinedTransitiveEdges /= []
+        then (True, joinedTransitiveEdges, [""])
+    else (False, joinedTransitiveEdges, [""])
 
-    else if result2 && containsII edges2
-      then (result1, edges1, message1)
-
-    else 
-        let joinedTransitiveEdges = joinTransitiveEdges edges1 edges2
-        in if result1 && result2 && joinedTransitiveEdges /= []
-          then (True, joinedTransitiveEdges, sucessMessage)
-        else (False, joinedTransitiveEdges, failMessage)
-
-evaluateIteration :: PDLProgram -> Graph -> (Bool, [Edge], String)
+evaluateIteration :: PDLProgram -> Graph -> (Bool, [Edge], [String])
 evaluateIteration program graph =
     let (result, edges, message) =  evaluateProgram program graph
-        sucessMessage = "Sucesso na evaliacao iterativa do programa >>> " ++ pdlToString program
-    --a iteração retorna sempre true, mas o segundo parâmetro pode ter apenas ("i", "i") se a iteração ocorrer 0 vezes
-    in (True, getMaxTransitives edges [] ++ [("i", "i")], sucessMessage)
+        --fazendo a uniao
+        reflexiveElements = getGraphReflexivePossibilities graph
+        transitivePossibilities = getTransitivePossibilities edges []
+        iterationPossibilitiesSet = edges ++ transitivePossibilities ++ reflexiveElements
+    in (True, removeDuplicateEdges iterationPossibilitiesSet, [""])
+
+getMessages :: (a, b, c) -> c
+getMessages (_, _, x) = x
 
 main = do
+    let teste = [("1", "2"), ("2", "3"), ("3", "4"), ("2", "5"), ("7", "8")]
+    putStrLn("Aqui a saida desse caso de exemplo para pegar as possibilidades transitivas:")
+    print(getTransitivePossibilities teste [])
+    putStrLn "\n\n"
+
     let pdlProgram1 = words "; U ; a b c * d"
     let programAST1 = parsePDL pdlProgram1
 
@@ -210,6 +218,7 @@ main = do
     putStrLn ("O resultado do caso 7 é: " ++ show (evaluateProgram programAST1 graph7_prog1))
     putStrLn ("O resultado do caso 8 é: " ++ show (evaluateProgram programAST1 graph8_prog1))
     putStrLn ("O resultado do caso 9 é: " ++ show (evaluateProgram programAST1 graph9_prog1))
+    print (head (getMessages (evaluateProgram programAST1 graph9_prog1)))
     putStrLn "\n"
 
     ---------------------------------------------------------------------------------------------
@@ -253,26 +262,20 @@ main = do
     
     putStrLn "Resultado do Programa 4:"
     putStrLn ("O resultado do caso 1 é: " ++ show (evaluateProgram programAST4 graph1_prog4))
+    print (head (getMessages (evaluateProgram programAST4 graph1_prog4)))
 
     -------------------------------------------------------------------------------------------
 
-    -- let pdlProgram4 = words "; a b"
-    -- let programAST4 = parsePDL pdlProgram4
-    -- let graph1_prog4 = [("s1", "s2", "a"), ("s2", "s3", "c"), ("s3", "s4", "b")]
-    
-    -- putStrLn "Resultado do Programa 4:"
-    -- putStrLn ("O resultado do caso 1 é: " ++ show (evaluateProgram programAST4 graph1_prog4))
+    putStrLn "\n---------------------------------------------------------------------------------------------------"
+    putStrLn "\nO programa deve ser escrito de forma prefixada e com espaço entre caracteres."
+    putStrLn "Exemplo: \"; a * d\" representa \"a;(*d)\"\nDigite abaixo:"
+    inputProgram <- getLine
+    let pdlProgram = words inputProgram
+    let programAST = parsePDL pdlProgram
 
-    -- putStrLn "\n---------------------------------------------------------------------------------------------------"
-    -- putStrLn "\nO programa deve ser escrito de forma prefixada e com espaço entre caracteres."
-    -- putStrLn "Exemplo: \"; a * d\"\nDigite abaixo:"
-    -- inputProgram <- getLine
-    -- let pdlProgram = words inputProgram
-    -- let programAST = parsePDL pdlProgram
+    putStrLn "\nDigite abaixo cada aresta do grafo com seus elementos separados por espaço e aperte enter."
+    putStrLn "Exemplo: a entrada 's1 s2 a' representa a aresta '(s1, s2, a)'."
+    putStrLn "Para encerrar a inserção de arestas, digite 0."
 
-    -- putStrLn "\nDigite abaixo cada aresta do grafo com seus elementos separados por espaço e aperte enter."
-    -- putStrLn "Exemplo: a entrada 's1 s2 a' representa a aresta '(s1, s2, a)'."
-    -- putStrLn "Para encerrar a inserção de arestas, digite 0."
-
-    -- graph <- readGraph []
-    -- print (evaluateProgram programAST graph)
+    graph <- readGraph []
+    print (evaluateProgram programAST graph)
