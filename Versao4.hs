@@ -161,9 +161,11 @@ evaluateNonDeterminism prog1 prog2 graph =
         successMessage = "Sucesso na avaliacao nao deterministica do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
         failMessage = "Falha na avaliacao nao deterministica do programa >>> " ++ pdlToString prog1 ++ pdlToString prog2
         finalMessage = message1 ++ message2 ++ [successMessage]
+        
+        outputEdges = removeDuplicateEdges (edges1 ++ edges2)
     in if result1 || result2
-        then(True, edges1 ++ edges2, [""])
-    else (False, edges1 ++ edges2, [""])
+        then(True, outputEdges, [""])
+    else (False, outputEdges, [""])
     -- aqui nao pode fazer curto circuito pq se o programa (a;(b U c)) fosse testado com o grafo:
     -- (1)---a--->(2)---c--->(3)---b--->(4) retornaria false já que b já retornaria [(3,4)] para a avaliacao sequencial
     -- entao a avaliacao sequencial pegaria [(1, 2)] de a, que não é considerado transitivo à b
