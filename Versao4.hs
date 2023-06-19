@@ -154,13 +154,6 @@ existsTransitive edge edges =
     let transitiveEdges = getTransitiveEdges edge edges 
          in (transitiveEdges /= [])  
 
-getAllBidirecionalEdges:: [Edge] -> [Edge]
-getAllBidirecionalEdges edges = let bidirecionalEdges = [(fromState1, toState1) | (fromState1, toState1) <- edges, 
-                                                       (fromState2, toState2) <- edges,
-                                                       fromState1 == toState2 &&
-                                                       fromState1 /= toState1]
-                                in removeDuplicateEdges bidirecionalEdges
-
 -- o objetivo de getTransitivePossibilities e retornar todos os "caminhos" possiveis entre os filhos da iteracao
 -- ou seja, para a entrada [("1", "2"), ("2", "3"), ("3", "4"), ("2", "5"), ("7", "8"), ("8", "9")]
 -- o retorno seria [("1", "3"), ("1", "4"), ("2", "4"), ("1", "5"), ("7", "9")]
@@ -174,23 +167,22 @@ getTransitivePossibilities edges1 edges2 =
         then getHeadPossibleTransitive (differenceEdges edges1 reflexiveEdges) edges2
     else
         let headEdgesSet = getAllHeadEdges edges1
-            bidirecionalEdges = getAllBidirecionalEdges edges1
-            headAllHeadEdges = head (headEdgesSet ++ bidirecionalEdges)
-            possibleEdges = getHeadPossibleTransitive [headAllHeadEdges] edges1
-            edges1' = removeEdge headAllHeadEdges edges1
-            edges2' = removeDuplicateEdges edges2 ++ possibleEdges
-        in getTransitivePossibilities edges1' edges2'
-
-isReflexive :: [Edge] -> Bool
-isReflexive edge = let (fromState, toState) = head(edge)
-                   in fromState == toState
+        in if headEdgesSet /= []
+            then
+                let headAllHeadEdges = head (headEdgesSet)
+                    possibleEdges = getHeadPossibleTransitive [headAllHeadEdges] edges1
+                    edges1' = removeEdge headAllHeadEdges edges1
+                    edges2' = removeDuplicateEdges edges2 ++ possibleEdges
+                in getTransitivePossibilities edges1' edges2'
+            else
+                []
 
 -- pega o caminho maximo possivel e todos os intermediarios dentro dele para cada "aresta cabeca"
 -- [("1", "3"), ("1", "4"), ("2", "4"), ("1", "5")] para ("1", "2")
 -- [("7", "9") para ("7", "8")]
 getHeadPossibleTransitive :: [Edge] -> [Edge] -> [Edge]
 getHeadPossibleTransitive edge edges =
-    if not (existsTransitive edge edges) || isReflexive edge
+    if not (existsTransitive edge edges)
         then []
     else 
         let joinedTransitiveEdges = joinTransitiveEdges edge edges

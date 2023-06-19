@@ -1,3 +1,5 @@
+dupla: rodrigo da mota, sara maia
+
 programa 1: (((a;b) U c); (*d))
  
 caso 1:
