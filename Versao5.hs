@@ -52,7 +52,7 @@ readGraph lines = do
 
 executeEntryLoop :: IO ()
 executeEntryLoop = do
-    putStrLn("\n\nEntrada-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nEntrada--------------------------------------------------------------------------")
     putStrLn "\nO programa deve ser escrito de forma prefixada e com espaço entre caracteres."
     putStrLn "Exemplo: \"; a * d\" representa \"a;(*d)\"\nDigite abaixo:"
     inputProgram <- getLine
@@ -96,9 +96,9 @@ evaluateAndPrint :: (PDLProgram, Graph) -> IO ()
 evaluateAndPrint (pdlProgram, graph) = do
     let evaluation = evaluateProgram pdlProgram graph
     let messages = getMessages evaluation
-    putStrLn ("Resultado do Programa \"" ++ pdlToString pdlProgram ++  "\" com o grafo " ++ show graph ++ ":")
+    putStrLn ("Resultado do Programa \"" ++ pdlToString pdlProgram ++  "\"\nPara o grafo: " ++ show graph ++ "\n")
     printMessageList messages
-    putStrLn ("Resultado final: " ++ getFinalMessage evaluation)
+    putStrLn ("\nResultado final: " ++ getFinalMessage evaluation)
 
 getMessages :: (Bool, [Edge], [String]) -> [String]
 getMessages (_, _, messages) = messages
@@ -156,7 +156,7 @@ evaluateAtomic :: String -> Graph -> (Bool, [Edge], [String])
 evaluateAtomic prog graph = 
     -- pega as ocorrencias (a,b) de uma label atomica de aresta
     let edges = getEdges graph prog
-        successMessage = "Sucesso na avaliação atômica do operando (" ++ prog ++ ") \26 " ++ show edges
+        successMessage = "Sucesso na avaliação atômica do operando (" ++ prog ++ ") -> " ++ show edges
         failMessage = "Falha na avaliação atômica do operando (" ++ prog ++ ")"
     in if edges /= []
         then (True, edges, [successMessage])
@@ -167,7 +167,7 @@ evaluateNonDeterminism prog1 prog2 graph =
     let (result1, edges1, message1) = evaluateProgram prog1 graph 
         (result2, edges2, message2) = evaluateProgram prog2 graph
         outputEdges = nub (edges1 ++ edges2)
-        successMessage = "Sucesso na avaliação não determinística dos operandos  (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ") \26 " ++  show outputEdges
+        successMessage = "Sucesso na avaliação não determinística dos operandos  (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ") -> " ++  show outputEdges
         failMessage = "Falha na avaliação não determinística dos operandos (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ")"
         finalSuccessMessage = message1 ++ message2 ++ [successMessage]
         finalFailMessage = message1 ++ message2 ++ [failMessage]
@@ -187,7 +187,7 @@ evaluateSequence prog1 prog2 graph =
         -- preservar o histórico de falhas de avaliação por completo optamos por não o fazer
         joinedTransitiveEdges = joinTransitiveEdges edges1 edges2
 
-        successMessage = "Sucesso na avaliação sequencial dos operandos (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ") \26 " ++ show joinedTransitiveEdges
+        successMessage = "Sucesso na avaliação sequencial dos operandos (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ") -> " ++ show joinedTransitiveEdges
         failMessage = "Falha na avaliação sequencial dos operandos  (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ")"
         
         finalSuccessMessage = message1 ++ message2 ++ [successMessage]
@@ -205,7 +205,7 @@ evaluateIteration program graph =
         transitivePossibilities = getTransitivePossibilities edges []
         iterationPossibilitiesSet = edges ++ transitivePossibilities ++ reflexiveElements
 
-        successMessage = "Sucesso na avaliação iterativa do operando (" ++ pdlToString program ++ ") \26 " ++  show iterationPossibilitiesSet
+        successMessage = "Sucesso na avaliação iterativa do operando (" ++ pdlToString program ++ ") -> " ++  show iterationPossibilitiesSet
 
     in (True, nub iterationPossibilitiesSet, [successMessage])
 
@@ -218,7 +218,7 @@ evaluateTest program graph =
 
 main = do
     -- esses casos de teste estao desenhados no arquivo "casos_de_teste.txt"
-    putStrLn("\n\nPrograma 1-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nPrograma 1--------------------------------------------------------------------------")
     let pdlProgram1 = words "; U ; a b c * d"
     let programAST1 = parsePDL pdlProgram1
     let graph1_prog1 = [("s3", "s1", "a"), ("s1", "s2", "b"), ("s2","s3","k"), ("s3","s4","d"), ("s4", "s2", "h")]
@@ -231,7 +231,7 @@ main = do
     putStrLn("\n--------Caso 3")
     evaluateAndPrint (programAST1, graph3_prog1)
 
-    putStrLn("\n\nPrograma 2-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nPrograma 2--------------------------------------------------------------------------")
     let pdlProgram2 = words "; * ; * U a b c d"
     let programAST2 = parsePDL pdlProgram2
     let graph1_prog2 = [("s1", "s2", "a"), ("s2", "s3", "c"), ("s3", "s4", "d")]
@@ -241,21 +241,21 @@ main = do
     putStrLn("\n--------Caso 2")
     evaluateAndPrint (programAST2, graph2_prog2)
 
-    putStrLn("\n\nPrograma 3-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nPrograma 3--------------------------------------------------------------------------")
     let pdlProgram3 = words "; ? c U * k * a"
     let programAST3 = parsePDL pdlProgram3
     let graph1_prog3 = [("s1", "s2", "a"), ("s2", "s3", "c"), ("s3", "s4", "b")]
     putStrLn("\n--------Caso 1")
     evaluateAndPrint (programAST3, graph1_prog3)
 
-    putStrLn("\n\nPrograma 4-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nPrograma 4--------------------------------------------------------------------------")
     let pdlProgram4 = words "; a * ? d"
     let programAST4 = parsePDL pdlProgram4
     let graph1_prog4 = [("s1", "s2", "a"), ("s2", "s3", "d"), ("s3", "s2", "d")]
     putStrLn("\n--------Caso 1")
     evaluateAndPrint (programAST4, graph1_prog4)
 
-    putStrLn("\n\nPrograma 5-------------------------------------------------------------------------------------------------------------------------------")
+    putStrLn("\n\nPrograma 5--------------------------------------------------------------------------")
     let pdlProgram5 = words "; k ; * a ; a ; a b"
     let programAST5 = parsePDL pdlProgram5
     let graph1_prog5 = [("s0", "s1", "k"),("s1", "s2", "a"), ("s2", "s3", "a"), ("s3", "s1", "a"), ("s2", "s5", "b")]
