@@ -30,14 +30,14 @@ parsePDLProgram ("?" : rest) =
     let (prog, rest1) = parsePDLProgram rest
     in (OperatorProgram "?" [prog], rest1)
 parsePDLProgram (token : rest) = (AtomicProgram token, rest)
-parsePDLProgram [] = error "Programa vazio"
+parsePDLProgram [] = error "ERRO SINTATICO: Programa vazio"
 
 parsePDL :: [String] -> PDLProgram
 parsePDL tokens =
   let (program, remainingTokens) = parsePDLProgram tokens
   in if null remainingTokens
       then program
-      else error "Programa inválido. Faltam símbolos."
+      else error "ERRO SINTATICO: Programa inválido. Faltam símbolos."
 
 --funcoes auxiliares de entrada 
 
@@ -68,7 +68,7 @@ executeEntryLoop = do
 
     putStrLn "\nDeseja realizar uma nova avaliação? (sim/não)"
     answer <- getLine
-    if answer == "sim"
+    if answer `elem` ["sim", "s", "yes", "y", "S", "Y"]
         then executeEntryLoop
         else putStrLn "Encerrando o programa."
 
@@ -78,9 +78,6 @@ pdlToString :: PDLProgram -> String
 pdlToString (OperatorProgram op [prog1, prog2]) = op ++ " " ++ pdlToString prog1 ++ " " ++ pdlToString prog2
 pdlToString (OperatorProgram op [prog]) = op ++ " " ++ pdlToString prog
 pdlToString (AtomicProgram token) = token ++ " "
-
-getMessages :: (Bool, [Edge], [String]) -> [String]
-getMessages (_, _, messages) = messages
 
 getFinalMessage :: (Bool, [Edge], [String]) -> String
 getFinalMessage (result, _, _) = let success = "Sim, o conjunto de vértices e arestas rotuladas correspondem a um frame satisfazível para o programa."
@@ -94,6 +91,7 @@ printMessageList (message : messages) = do
     putStrLn message
     printMessageList messages
 
+
 evaluateAndPrint :: (PDLProgram, Graph) -> IO ()
 evaluateAndPrint (pdlProgram, graph) = do
     let evaluation = evaluateProgram pdlProgram graph
@@ -101,6 +99,9 @@ evaluateAndPrint (pdlProgram, graph) = do
     putStrLn ("Resultado do Programa \"" ++ pdlToString pdlProgram ++  "\" com o grafo " ++ show graph ++ ":")
     printMessageList messages
     putStrLn ("Resultado final: " ++ getFinalMessage evaluation)
+
+getMessages :: (Bool, [Edge], [String]) -> [String]
+getMessages (_, _, messages) = messages
 
 -- funcoes auxiliares para avaliacao semantica
 
@@ -113,54 +114,16 @@ joinTransitiveEdges edges1 edges2 = [(fromState1, toState2) | (fromState1, toSta
                                                               (fromState2, toState2) <- edges2, 
                                                                toState1 == fromState2]
 
--- removeDuplicateEdges :: [Edge] -> [Edge]
--- removeDuplicateEdges edges = [edge | i <- [0 .. length edges - 1], 
---                                           let edge = edges !! i, 
---                                           edge `notElem` take i edges]
-
-differenceEdges :: [Edge] -> [Edge] -> [Edge]
-differenceEdges edges1 edges2 = [edge | edge <- edges1, edge `notElem` edges2]
-
-removeEdge :: Edge -> [Edge] -> [Edge]
-removeEdge edge edges = [edge | edge <- edges, edge /= edge]
-
-isHeadEdge :: [Edge] -> [Edge] -> Bool
-isHeadEdge edge edges = 
-    let previousEdges = [toState2 | (fromState1, toState1) <- edge, 
-                                    (fromState2, toState2) <- edges,    
-                                    toState2 == fromState1]
-    in (previousEdges == [])
-
--- pega todas as arestas (a, b) para as quais não existe aresta do tipo (_, a)
-getAllHeadEdges :: [Edge] -> [Edge]
-getAllHeadEdges edges = [(fromState, toState) | (fromState, toState) <- edges, 
-                                                isHeadEdge [(fromState, toState)] edges]  
-
-getTransitiveEdges :: [Edge] -> [Edge] -> [Edge]
-getTransitiveEdges edge edges = [(fromState2, toState2) | (fromState1, toState1) <- edge, 
-                                                          (fromState2, toState2) <- edges, 
-                                                          toState1 == fromState2]
-
-getAllReflexiveEdges :: [Edge] -> [Edge]
-getAllReflexiveEdges edges = [(fromState, toState) | (fromState, toState) <- edges, 
-                                                      fromState == toState] 
-
 getGraphReflexivePossibilities :: Graph -> [Edge]
 getGraphReflexivePossibilities graph =
     let reflexives1 = [(fromState, fromState) | (fromState, toState, labelEdge) <- graph]
         reflexives2 = [(toState, toState) | (fromState, toState, labelEdge) <- graph]
     in nub (reflexives1 ++ reflexives2)
 
-existsTransitive :: [Edge] -> [Edge] -> Bool
-existsTransitive edge edges =
-    let transitiveEdges = getTransitiveEdges edge edges 
-         in (transitiveEdges /= [])  
-
--- o objetivo de getTransitivePossibilities e retornar todos os "caminhos" possiveis entre os filhos da iteracao
+-- Retorna todas as transitivas internas entre duas listas de estados
 -- ou seja, para a entrada [("1", "2"), ("2", "3"), ("3", "4"), ("2", "5"), ("7", "8"), ("8", "9")]
 -- o retorno seria [("1", "3"), ("1", "4"), ("2", "4"), ("1", "5"), ("7", "9")]
--- ela chama getHeadPossibleTransitive para todas "arestas cabeca", que nesse exemplo seriam ("1", "2") e ("7", "8")
--- pois nao existem arestas do tipo (_, "1") nem (_, "7") na entrada
+-- removendo reflexivas e já existentes no input
 getTransitivePossibilities :: [Edge] -> [Edge] -> [Edge]
 getTransitivePossibilities edges1 edges2 =
   let allStates = nub $ concatMap (\(from, to) -> [from, to]) (edges1 ++ edges2)
@@ -173,27 +136,6 @@ getTransitivePossibilities edges1 edges2 =
       | from `elem` visited = False  -- Avoid revisiting already visited states
       | otherwise = any (\(_, next) -> reachable next to (from : visited)) (filter (\(start, _) -> start == from) edges1)
                    || any (\(_, next) -> reachable next to (from : visited)) (filter (\(start, _) -> start == from) edges2)
-
--- pega o caminho maximo possivel e todos os intermediarios dentro dele para cada "aresta cabeca"
--- [("1", "3"), ("1", "4"), ("2", "4"), ("1", "5")] para ("1", "2")
--- [("7", "9") para ("7", "8")]
-getHeadPossibleTransitive :: [Edge] -> [Edge] -> [Edge]
-getHeadPossibleTransitive edge edges =
-    if not (existsTransitive edge edges)
-        then []
-    else 
-        let joinedTransitiveEdges = joinTransitiveEdges edge edges
-            possibleTransitiveEdges = headCalls joinedTransitiveEdges edges
-        in nub joinedTransitiveEdges ++ possibleTransitiveEdges
-
-headCalls:: [Edge] -> [Edge] -> [Edge]
-headCalls [] edges = []
-headCalls edge edges =
-    let currentEdge = head (edge)
-        possibleEdges = getHeadPossibleTransitive [currentEdge] edges
-        newEdge = removeEdge currentEdge edge
-        possibleEdges' = headCalls newEdge edges 
-    in nub possibleEdges ++ possibleEdges'
 
 -- avaliacao semantica
 -- o segundo elemento da tupla representa as relacoes pelas quais se e possivel "passar"
@@ -241,10 +183,13 @@ evaluateSequence :: PDLProgram -> PDLProgram -> Graph -> (Bool, [Edge], [String]
 evaluateSequence prog1 prog2 graph = 
     let (result1, edges1, message1) = evaluateProgram prog1 graph 
         (result2, edges2, message2) = evaluateProgram prog2 graph
-        -- a funcao joinTransitiveEdges pega arestas (a,b) e (b,c) e forma arestas (a,c)
+        -- Poderiamos fazer curto circuito aqui, evitando uma linha de avaliação no segundo programa, mas para
+        -- preservar o histórico de falhas de avaliação por completo optamos por não o fazer
         joinedTransitiveEdges = joinTransitiveEdges edges1 edges2
+
         successMessage = "Sucesso na avaliação sequencial dos operandos (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ") \26 " ++ show joinedTransitiveEdges
         failMessage = "Falha na avaliação sequencial dos operandos  (" ++ pdlToString prog1 ++ ") e (" ++ pdlToString prog2 ++ ")"
+        
         finalSuccessMessage = message1 ++ message2 ++ [successMessage]
         finalFailMessage = message1 ++ message2 ++ [failMessage]
 
@@ -255,11 +200,13 @@ evaluateSequence prog1 prog2 graph =
 evaluateIteration :: PDLProgram -> Graph -> (Bool, [Edge], [String])
 evaluateIteration program graph =
     let (result, edges, message) =  evaluateProgram program graph
-        --fazendo a uniao
+
         reflexiveElements = getGraphReflexivePossibilities graph
         transitivePossibilities = getTransitivePossibilities edges []
         iterationPossibilitiesSet = edges ++ transitivePossibilities ++ reflexiveElements
+
         successMessage = "Sucesso na avaliação iterativa do operando (" ++ pdlToString program ++ ") \26 " ++  show iterationPossibilitiesSet
+
     in (True, nub iterationPossibilitiesSet, [successMessage])
 
 evaluateTest :: PDLProgram -> Graph -> (Bool, [Edge], [String])
@@ -302,7 +249,7 @@ main = do
     evaluateAndPrint (programAST3, graph1_prog3)
 
     putStrLn("\n\nPrograma 4-------------------------------------------------------------------------------------------------------------------------------")
-    let pdlProgram4 = words "; a * d"
+    let pdlProgram4 = words "; a * ? d"
     let programAST4 = parsePDL pdlProgram4
     let graph1_prog4 = [("s1", "s2", "a"), ("s2", "s3", "d"), ("s3", "s2", "d")]
     putStrLn("\n--------Caso 1")
@@ -311,7 +258,7 @@ main = do
     putStrLn("\n\nPrograma 5-------------------------------------------------------------------------------------------------------------------------------")
     let pdlProgram5 = words "; k ; * a ; a ; a b"
     let programAST5 = parsePDL pdlProgram5
-    let graph1_prog5 = [("start", "s1", "k"),("s1", "s2", "a"), ("s2", "s3", "a"), ("s3", "s1", "a"), ("s2", "end", "b")]
+    let graph1_prog5 = [("s0", "s1", "k"),("s1", "s2", "a"), ("s2", "s3", "a"), ("s3", "s1", "a"), ("s2", "s5", "b")]
     putStrLn("\n--------Caso 1")
     evaluateAndPrint (programAST5, graph1_prog5)
 
