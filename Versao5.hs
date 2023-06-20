@@ -1,3 +1,7 @@
+-- Programa feito por Rodrigo Mota e Sara Maia
+-- 20-06-2023 . UFF-Niterói . Linguagens de Programação
+-- Professor: Bruno Lopes Vieira
+
 module Versao5 where
 
 import Data.List (nub)

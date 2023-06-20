@@ -1,4 +1,6 @@
-dupla: rodrigo da mota, sara maia
+-- Trabalho feito por Rodrigo Mota e Sara Maia
+-- 20-06-2023 . UFF-Niterói . Linguagens de Programação
+-- Professor: Bruno Lopes Vieira
 
 programa 1: (((a;b) U c); (*d))
  
