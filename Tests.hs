@@ -1,17 +1,17 @@
+import Data.List (nub)
+
 type State = String
 type Edge = (State, State)
 
-getReflexivePossibilities::[Edge] -> [Edge]
-getReflexivePossibilities edges = let reflexives1 = [(fromState, fromState) | (fromState, toState) <- edges] 
-                                      reflexives2 = [(toState, toState) | (fromState, toState) <- edges]
-                                      in unionEdges reflexives1 reflexives2
-
-unionEdges :: [Edge] -> [Edge] -> [Edge]
-unionEdges edges1 edges2 = edges1 ++ filter (`notElem` edges1) edges2
-
-main = do
-
-    let graph1_prog1 = [("s1", "s2"), ("s1", "s3")]
-
-    putStrLn "Resultado do Programa 1:"
-    putStrLn ("O resultado do caso 1 é: " ++ show (getReflexivePossibilities graph1_prog1))
+getPossibleTransitives :: [Edge] -> [Edge] -> [Edge]
+getPossibleTransitives edges1 edges2 =
+  let allStates = nub $ concatMap (\(from, to) -> [from, to]) (edges1 ++ edges2)
+      transitiveStates = [(from, to) | from <- allStates, to <- allStates, reachable from to []]
+  in filter (\(from, to) -> (from, to) `notElem` (edges1 ++ edges2) && from /= to) transitiveStates
+  where
+    reachable :: State -> State -> [State] -> Bool
+    reachable from to visited
+      | from == to = True
+      | from `elem` visited = False  -- Avoid revisiting already visited states
+      | otherwise = any (\(_, next) -> reachable next to (from : visited)) (filter (\(start, _) -> start == from) edges1)
+                   || any (\(_, next) -> reachable next to (from : visited)) (filter (\(start, _) -> start == from) edges2)
